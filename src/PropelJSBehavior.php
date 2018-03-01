@@ -21,7 +21,7 @@ class PropelJSBehavior extends Behavior
         if ($this->pluralizer === null) {
             $this->pluralizer = new StandardEnglishPluralizer();
         }
-        
+
         return $this->pluralizer;
     }
 
@@ -33,7 +33,7 @@ class PropelJSBehavior extends Behavior
             self::execute();
         }
     }
-    
+
     public function execute()
     {
 
@@ -56,9 +56,17 @@ class PropelJSBehavior extends Behavior
         $tablePlurals = [];
         $tablePhpNames = [];
         $tableColumns = [];
+        $tablePks = [];
         foreach ($tables as $table) {
+
             $tablePhpNames[$table->getName()] = $table->getPhpName();
             $tablePlurals[$table->getName()] = $this->getPluralizer()->getPluralForm($table->getName());
+
+            $tablePks[$table->getName()] = [];
+            foreach ($table->getPrimaryKey() as $pk_column) {
+                $tablePks[$table->getName()][$pk_column->getPhpName()] = $pk_column->getType();
+            }
+
 
             $tableColumns[$table->getName()] = [];
             foreach ($table->getColumns() as $column) {
@@ -72,6 +80,7 @@ class PropelJSBehavior extends Behavior
                 'tablePhpNames' => $tablePhpNames,
                 'tablePlurals' => $tablePlurals,
                 'tableColumns' => $tableColumns,
+                'tablePks' => $tablePks
             ]
         ));
         file_put_contents($jsDirectory . "/$databaseName.js", $js);
@@ -81,10 +90,11 @@ class PropelJSBehavior extends Behavior
                 'namespace' => $namespace,
                 'tablePhpNames' => $tablePhpNames,
                 'tablePlurals' => $tablePlurals,
+                'tablePks' => $tablePks
             ]
         ));
         file_put_contents($apiDirectory . "/API.php", $api);
-        
+
     }
 
 }

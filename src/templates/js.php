@@ -83,9 +83,20 @@ var <?php echo $databaseName; ?> = {};
 
     <?php foreach ($tableColumns as $tableName => $columns) { ?>
 
-    var <?php echo $tablePhpNames[$tableName]; ?> = function(id) {
+    var <?php echo $tablePhpNames[$tableName]; ?> = function() {
 
-        var attributes = {'Id': id};
+        var
+            attributes = {},
+            pks = {},
+            path = '<?=$tablePlurals[$tableName]?>/';
+
+        const pkNames = ['<?= implode('\',\'', array_keys($tablePks[$tableName])) ?>'];
+
+        for(var argi = 0; argi < arguments.length; argi++)
+        {
+            attributes[pkNames[argi]] = arguments[argi];
+            path += arguments[argi] + '/';
+        }
 
         /**
          * Internal method for getting an instance attribute.
@@ -114,10 +125,10 @@ var <?php echo $databaseName; ?> = {};
          *
          * @returns {*}
          */
-        var getId = function()
+        var getPk = function()
         {
-            return getAttribute('Id');
-        };<?php echo "\n"; foreach ($columns as $columnName => $columnType) { if ($columnName !== 'Id') { ?>
+            return getAttribute(pkNames[0]);
+        };<?php echo "\n"; foreach ($columns as $columnName => $columnType) { ?>
 
         /**
          * Set the <?php echo $columnName; ?> attribute for this <?php echo $tableName; ?>.
@@ -141,7 +152,7 @@ var <?php echo $databaseName; ?> = {};
         {
             return getAttribute('<?php echo $columnName; ?>');
         };
-    <?php }} ?>
+    <?php } ?>
 
         /**
          * Perform the delete action for this <?php echo $tableName; ?>.
@@ -152,7 +163,7 @@ var <?php echo $databaseName; ?> = {};
         {
             return doAJAX(
                 'DELETE',
-                '<?php echo $tablePlurals[$tableName]; ?>/' + getId()
+                path
             ).then(function(result) {attributes = {}; return undefined;})
         };
 
@@ -167,7 +178,7 @@ var <?php echo $databaseName; ?> = {};
 
             return doAJAX(
                 'GET',
-                '<?php echo $tablePlurals[$tableName]; ?>/' + getId()
+                path
             ).then(function(result) {attributes = result; return <?php echo $tableName; ?>;})
         };
 
@@ -218,31 +229,31 @@ var <?php echo $databaseName; ?> = {};
                 'GET',
                 '<?php echo $tablePlurals[$tableName]; ?>/?' + $.param(findAttributes)
             ).then(function(result) {
-        
+
                 if (result.data.length > 0) {
                     var <?php echo $tableName; ?> = <?php echo $tablePhpNames[$tableName]; ?>(result.data[0].Id);
-            
+
                     for (var name in result.data[0]) {
                         if (result.data[0].hasOwnProperty(name)) {
                             var setter = "set" + name;
-                    
+
                             if (<?php echo $tableName; ?>.hasOwnProperty(setter)) {
                                 <?php echo $tableName; ?>[setter](result.data[0][name]);
                             }
                         }
                     }
-                    
+
                     return <?php echo $tableName; ?>;
                 } else {
                     return null;
                 }
-        
+
             })
         };
-        
+
         /**
          * Perform the update or the create action for this <?php echo $tableName; ?>.
-         * 
+         *
          * @returns {*}
          */
         var save = function()
@@ -251,7 +262,7 @@ var <?php echo $databaseName; ?> = {};
 
             var ajax;
 
-            if (typeof getId() === 'undefined') {
+            if (typeof getPk() === 'undefined') {
                 ajax = doAJAX(
                     'POST',
                     '<?php echo $tablePlurals[$tableName]; ?>/',
@@ -260,7 +271,7 @@ var <?php echo $databaseName; ?> = {};
             } else {
                 ajax = doAJAX(
                     'PUT',
-                    '<?php echo $tablePlurals[$tableName]; ?>/' + getId(),
+                    path,
                     attributes
                 )
             }
@@ -274,14 +285,15 @@ var <?php echo $databaseName; ?> = {};
             'findOne': findOne,
             'delete': remove,
             'save': save,
-            'getId': getId,<?php echo "\n"; foreach ($columns as $columnName => $columnType) { if ($columnName !== 'Id') { ?><?php echo "'get$columnName': get$columnName,\n"; ?>
-            <?php echo "'set$columnName': set$columnName,\n"; } ?>
-            <?php } ?>
-
+            'getPk': getPk,
+<?php foreach ($columns as $columnName => $columnType) {?>
+            'get<?=$columnName?>': get<?=$columnName?>,
+            'set<?=$columnName?>': set<?=$columnName?>,
+<?php } ?>
         }
     };
     <?php } ?>
-    
+
     return function(data) {
         baseAddress = data.baseAddress;
         headers = data.headers;
